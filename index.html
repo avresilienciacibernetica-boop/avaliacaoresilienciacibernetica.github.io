@@ -193,29 +193,34 @@
       </div>
 
       <div class="bg-white rounded-xl card-shadow p-6 hidden" id="formularioDados">
-        <h2 class="text-2xl font-bold mb-4 text-gray-800 text-center">Receba o resultado da sua avaliação</h2>
-        <div class="text-left space-y-4">
-          <label class="block">Seu nome
-            <input type="text" id="nome" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
-          </label>
-          <label class="block">Seu melhor telefone
-            <input type="text" id="telefone" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
-          </label>
-          <label class="block">E-mail
-            <input type="email" id="email" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
-          </label>
-          <label class="block">Nome da sua empresa
-            <input type="text" id="empresa" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
-          </label>
-          <label class="block">Nº aproximado de computadores
-            <input type="number" id="computadores" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
-          </label>
-          <button type="button" class="w-full start-button mt-4 bg-blue-500 hover:bg-blue-600" onclick="enviarFormulario()">
+    <h2 class="text-2xl font-bold mb-4 text-gray-800 text-center">Receba o resultado da sua avaliação</h2>
+    <div class="text-left space-y-4">
+        <label class="block">Seu nome
+            <input type="text" id="nome" name="nome" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
+        </label>
+        <label class="block">Seu melhor telefone
+            <input type="text" id="telefone" name="telefone" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
+        </label>
+        <label class="block">E-mail
+            <input type="email" id="email" name="email" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
+        </label>
+        <label class="block">Nome da sua empresa
+            <input type="text" id="empresa" name="empresa" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
+        </label>
+        <label class="block">Nº aproximado de computadores
+            <input type="number" id="computadores" name="computadores" class="block w-full border rounded-lg p-3 mt-1 focus:ring-blue-500 focus:border-blue-500"/>
+        </label>
+        
+        <input type="hidden" id="perfilHidden" name="perfil" value="">
+        <input type="hidden" id="pontuacaoHidden" name="pontuacao" value="">
+        <input type="hidden" id="msgRiscoHidden" name="msgRisco" value="">
+
+        <button type="button" class="w-full start-button mt-4 bg-blue-500 hover:bg-blue-600" onclick="enviarFormulario()">
             Enviar e ver meu Resultado
-          </button>
-          <p id="alerta" class="text-red-600 text-center hidden mt-3 font-medium">Por favor, preencha todos os campos.</p>
-        </div>
-      </div>
+        </button>
+        <p id="alerta" class="text-red-600 text-center hidden mt-3 font-medium">Por favor, preencha todos os campos.</p>
+    </div>
+</div>
 
       <div class="bg-white rounded-xl card-shadow p-6" id="questionCard"></div>
 
@@ -367,70 +372,68 @@
       document.getElementById("formularioDados").scrollIntoView({ behavior: 'smooth' });
     }
 
-    // FUNÇÃO ENVIAR FORMULÁRIO (AGORA COM ENVIO PARA O GOOGLE SHEETS)
-    async function enviarFormulario() {
-      const campos = ['nome', 'telefone', 'email', 'empresa', 'computadores'];
-      let valido = true;
-      const alerta = document.getElementById('alerta');
+// FUNÇÃO ENVIAR FORMULÁRIO (CORRIGIDA PARA USAR FormData)
+async function enviarFormulario() {
+    const campos = ['nome', 'telefone', 'email', 'empresa', 'computadores'];
+    let valido = true;
+    const alerta = document.getElementById('alerta');
 
-      // 1. Validação e Coleta de Dados do Contato
-      formUserData = {};
-      campos.forEach(id => {
+    // 1. Validação e Coleta de Dados do Contato
+    // MANTEMOS formUserData, mas agora atualizamos os campos hidden
+    formUserData = {};
+    campos.forEach(id => {
         const campo = document.getElementById(id);
         const valor = campo.value.trim();
         campo.classList.remove('border-red-500');
 
         if (!valor) {
-          campo.classList.add('border-red-500');
-          valido = false;
+            campo.classList.add('border-red-500');
+            valido = false;
         }
         formUserData[id] = valor;
-      });
+    });
 
-      if (!valido) {
+    if (!valido) {
         alerta.classList.remove('hidden');
         return;
-      }
+    }
+    alerta.classList.add('hidden');
 
-      alerta.classList.add('hidden');
+    // 2. Cálculo do Score e Risco
+    const { finalScore, finalRisk } = showResult(true);
 
-      // 2. Cálculo do Score e Risco (para envio)
-      const { finalScore, finalRisk } = showResult(true); // Chamada para obter dados sem animação
+    // 3. Atualiza os campos hidden com os resultados calculados
+    document.getElementById('perfilHidden').value = activeType === 'ti' ? 'TI' : 'Proprietário';
+    document.getElementById('pontuacaoHidden').value = finalScore;
+    document.getElementById('msgRiscoHidden').value = finalRisk;
 
-      // 3. Preparação dos Dados para Envio
-      const dataToSend = {
-        'Nome': formUserData.nome,
-        'Telefone': formUserData.telefone,
-        'Email': formUserData.email,
-        'Empresa': formUserData.empresa,
-        'Computadores': formUserData.computadores,
-        'Perfil': activeType === 'ti' ? 'TI' : 'Proprietário',
-        'Score': finalScore,
-        'Risco': finalRisk
-      };
+    // 4. Cria o objeto FormData para envio
+    const formData = new FormData();
+    // Adiciona os dados de contato
+    campos.forEach(id => formData.append(id, formUserData[id]));
+    // Adiciona os dados calculados (dos campos hidden)
+    formData.append('perfil', document.getElementById('perfilHidden').value);
+    formData.append('pontuacao', document.getElementById('pontuacaoHidden').value);
+    formData.append('msgRisco', document.getElementById('msgRiscoHidden').value);
 
-      // 4. Envio dos Dados para o Google Sheets (Apps Script)
-      try {
+    // 5. Envio dos Dados para o Google Sheets (Apps Script)
+    try {
         await fetch(WEB_APP_URL, {
-          method: 'POST',
-          mode: 'no-cors', 
-          cache: 'no-cache',
-          headers: {
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify(dataToSend) 
+            method: 'POST',
+            mode: 'no-cors', // Mantido no-cors para evitar bloqueios de navegador, mesmo com FormData
+            body: formData  // Envia o objeto FormData
         });
 
         console.log("Dados enviados com sucesso para o Google Sheets.");
 
-      } catch (error) {
+    } catch (error) {
         console.error('Erro ao enviar dados para o Google Sheets:', error);
-      }
-      
-      // 5. Exibe o resultado (com animação)
-      document.getElementById('formularioDados').classList.add("hidden");
-      showResult(false);
     }
+
+    // 6. Exibe o resultado (com animação)
+    document.getElementById('formularioDados').classList.add("hidden");
+    showResult(false);
+}
     
     // --- Lógica do Disco de Progresso e Resultado ---
     const DISK_SIZE = 250;
@@ -576,3 +579,4 @@
 </body>
 
 </html>
+
